@@ -1,0 +1,214 @@
+---
+title: 'Exploración de datos IRIS '
+author: "Nombre"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+## Importando datos
+
+- Iniciaremos con el conjunto de datos Iris 
+
+```{r}
+data("iris") # El conjunto de datos está preinstalado en R
+# para aprender a cargar archivos con datos, escribimos:
+mydata<-read.table("/home/rosa/Documents/MDD2022/data/iris.data", header = T, sep = ",")
+```
+
+
+- Revisando este comando por argumentos 
+    - Los datos estan en el archivo llamado `iris.data`. Este archivo se encuentra en el Aula Virtual
+    - El archivo si contiene `header` en su primera fila por eso se define como `T` o como `TRUE`
+    - El formato csv nos dice que es un archivo con los campos separados por comas `sep=","`
+
+- Podriamos cargar el archivo tambien con el comando **`read.csv()`**, que es similar a `read.table()` pero predeterminado para `sep=","`
+
+Inciamos por explorar la dimensionalidad, nombres de las variables, estructura de los datos y el tipo de datos 
+
+```{r}
+dim(mydata)
+names(mydata)
+str(mydata)
+attributes(mydata)
+```
+ 
+Las primera o las últimas filas de datos se pueden recuperar con `head()` o `tail()`, que de forma predeterminada devuelven las primeras o las últimas 6 filas. Alternativamente, podemos obtener un cierto número de filas configurando el segundo parámetro a ambas funciones. Por ejemplo, las primeras 10 filas se obtienen con `head(DATOS,10)`.
+
+```{r}
+head(mydata)
+```
+
+```{r}
+tail(mydata)
+```
+
+```{r}
+head(mydata,10)
+```
+
+Para obtener los primeras filas de la variable Sepalo.Longitud
+```{r}
+mydata[1:10,"Sepalo.Longitud"]
+
+mydata[,"Sepalo.Longitud"]
+
+mydata[5:15,]
+```
+
+## Exploración de los datos
+La distribución de las variables se resume con la funcion `summary(DATOS)`
+```{r}
+summary(mydata)
+```
+
+La frequencia de las variables se obtiene con la función `table(DATOS$Variable)`. Se define una variable
+con el nombre del conjunto datos seguido por el simbolo `$` y el nombre de la variable. Por ejemplo, para definir la variable Especie de nuestros datos escribimos `mydata$Especie`.
+
+```{r}
+table(mydata$Especie)
+
+table(mydata$Petalo.Ancho)
+```
+
+Podemos presentar la misma información con una gráfica de pastel
+```{r}
+pie(table(mydata$Especie))
+```
+
+o un gráfico de barras
+
+```{r}
+barplot(table(mydata$Especie))
+```
+
+
+## Explorando una variable
+Varianza de Sepalo.Longitud
+
+```{r}
+var(mydata$Sepalo.Longitud)
+```
+
+
+Histograma con la distribución de una variable
+```{r}
+hist(mydata$Sepalo.Longitud)
+
+```
+
+Cambiando el texto de las coordenadas
+```{r}
+hist(mydata$Sepalo.Longitud, xlab = "Longitud del sépalo", ylab = "Frecuencia", main = "")
+
+```
+
+Gráfico de densidad de una variable
+
+```{r}
+plot(density(mydata$Sepalo.Ancho), main = "Densidad de la variable ancho de pétalo" )
+```
+
+## Explorando multivariables
+
+Covarianza de dos variables
+```{r}
+cov(mydata$Sepalo.Longitud, mydata$Petalo.Longitud)
+```
+
+Correlacion de dos variables
+
+```{r}
+cor(mydata$Sepalo.Longitud, mydata$Petalo.Longitud)
+```
+De los resultados anteriores, podemos ver que la correlación entre Sepalo.Longitud y
+Petalo.Longitud es 0.87, lo que significa que están relacionados positivamente entre sí.
+
+Explorando la correlación de las cuatro variables numéricas:
+
+```{r}
+cor(mydata[,1:4])
+```
+
+La longitud del sépalo y el ancho del pétalo están muy relacionados, así como Petalo.Longitud y Petalo.Ancho.
+Por el contrario, Sepalo.Ancho tiene una relación débilmente negativa con las otras tres variables.
+
+
+Gráfico de dispersión para dos variables
+
+```{r}
+plot(mydata$Sepalo.Longitud, mydata$Sepalo.Ancho, xlab = "Longitud de sépalo", ylab = "Ancho de sépalo")
+```
+
+¿Qué tipo de grafo produce `plot` solo con el conjunto de datos por argumento?
+
+```{r}
+plot(mydata)
+```
+
+También podemos ver todos los posibles pares con la función `pairs`.
+
+```{r}
+pairs(mydata)
+```
+
+¿Qué análisis podemos incluir basado en el gráfico anterior?
+
+A continuación, calculamos las estadísticas de Sepalo.Longitud de cada especie con la función aggregate().
+
+```{r}
+temp<-aggregate(Sepalo.Longitud ~ Especie, summary, data = mydata)
+temp
+```
+
+Luego usamos la función boxplot() para trazar un diagrama de caja, para mostrar la mediana, el primer y tercer cuartil de una distribución (es decir, los puntos 50%, 25% y 75% en distribución acumulativa) y valores atípicos. La barra del medio indica el valor de la mediana. El cuadro muestra el rango intercuartílico (RIC), que es el rango de observación entre el 75% y el 25%.
+
+
+```{r}
+boxplot(Sepalo.Longitud ~ Especie, data = mydata, xlab="Especie", ylab="Longitud del Sepalo")
+```
+
+El resultado muestra que las tres especies tienen diferentes distribuciones en su longitud de sépalo. 
+“Virginica” tiende a tener una longitud de sépalo grande, "setosa" tiene una longitud de sépalo pequeño y "versicolor" se encuentra en el medio. Eso sugiere que esta variable se puede utilizar para predecir las especies de flores.
+
+## Diagrama de dispersión
+
+Se puede dibujar un diagrama de dispersión para dos variables numéricas con plot() como se muestra a continuación. Agregamos las variables a incluir en el diagram "mydata$" seguido de los nombres de las variables. En el siguiente código, los colores (col) y los símbolos (pch) de los puntos se establecen con la variable Especie.
+
+
+```{r}
+plot(mydata$Sepalo.Longitud, mydata$Sepalo.Ancho, col=mydata$Especie, pch=as.numeric(mydata$Especie))
+```
+
+Para incluir una leyenda para los colores, ejecutar el siguiente código junto. 
+La función plot es muy simple, y no puede manejar gráficos más complejos, en este caso cambiamos la forma de los puntos a `pch=16` para que presente los datos como puntos rellenos e incluirlos en la leyenda.
+
+```{r}
+# para incluir la leyenda en plot:
+plot(mydata$Sepalo.Longitud, mydata$Sepalo.Ancho, col=mydata$Especie, pch=16)
+legend("topleft", legend=levels(mydata$Especie), pch=16, col=unique(mydata$Especie))
+```
+
+Otras funciones más utilizadas son partes de paquetes que deben instalarse en R, y podremos usar asi la libreria incluida en el paquete.  Un paquete que incluye funciones para visualizaciones es `ggplot2`. Instalamos el paquete una vez con `install.packages("ggplot2")` y al terminar podemos incluirl como libreria en nuestro código `library(ggplot2)`
+
+
+```{r}
+install.packages("ggplot2")
+```
+
+Ilustramos el uso de esta libreria con funciones como `qplot` y `ggplot`
+```{r}
+library(ggplot2)
+#qplot(mydata$Sepalo.Longitud, mydata$Sepalo.Ancho, facets =mydata$Especie) ESTA LINEA ME DIO ERROR EN CLASES
+qplot(Sepalo.Longitud, Sepalo.Ancho, facets=Especie ~., data=mydata)
+
+```
+Ahora utilizando `ggplot` la función más usada para visualizaciones en R.
+
+```{r}
+ggplot(data=mydata)+geom_point(aes(x=Sepalo.Longitud,y=Sepalo.Ancho,colour=Especie))
+```
+
+
+

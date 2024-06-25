@@ -1,0 +1,330 @@
+---
+title: "Proyecto Final - Detección de Spam"
+author: "José Antonio Fuentes Velásquez "
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyr)
+library(MASS)
+library(caret)
+```
+
+## Proyecto Final - Detección de spam e-mail
+
+## **1. Resumen de datos y problema a analizar**
+
+### **1.1 Problema a resolver**
+
+Se desea aplicar una técnica de clasificación de correos electrónicos recibidos en una compañia , esta clasificación debe de decidir si el correo electrónico es Spam o no lo es y para ello utilizaremos diversisas técnicas, las cuales nos ayudarán a establecer dichas clasificaciones para poder minimizar los errores de la clasificación .
+
+### **1.2. Descripcion de Dataset 'spam.csv'**
+
+**1. Título:** Base de datos de correo electrónico SPAM
+
+**2. Fuentes:**
+
+(a) Creadores: Mark Hopkins, Erik Reeber, George Forman, Jaap Suermondt Hewlett-Packard Labs, 1501 Page Mill Rd., Palo Alto, CA 94304
+
+(b) Donante: George Forman (gforman en nospam hpl.hp.com) 650-857-7835
+
+(c) Generado: Junio-Julio 1999
+
+**3. Uso pasado:**
+
+(a) Informe técnico exclusivamente interno de Hewlett-Packard. Próximamente externo.
+
+(b) Determinar si un correo electrónico dado es spam o no.
+
+(c) \~7% de error de clasificación errónea.
+
+Los falsos positivos (marcar correo bueno como spam) son muy indeseables.
+
+Si insistimos en cero falsos positivos en el conjunto de entrenamiento/prueba,
+
+20-25% del spam pasó por el filtro.
+
+**4. Información relevante:**
+
+El concepto de "spam" es diverso: anuncios de productos/sitios web, esquemas para ganar dinero rápidamente, cartas en cadena, pornografía... Nuestra colección de correos electrónicos no deseados provino de nuestro administrador de correos y de personas que habían enviado correo no deseado. Nuestra colección de correos electrónicos que no son spam provino de correos electrónicos personales y de trabajo archivados y, por lo tanto, la palabra 'george' y el código de área '650' son indicadores de que no son spam. Estos son útiles cuando se construye un filtro de spam personalizado. Uno tendría que cegar tales indicadores que no son spam u obtener una colección muy amplia de no spam para generar un filtro de spam de propósito general.
+
+***Para antecedentes sobre spam:***
+
+Cranor, Lorrie F., LaMacchia, Brian A. ¡Spam! Comunicaciones de la ACM, 41(8):74-83, 1998.
+
+**5. Número de Instancias:** 4601 (1813 Spam = 39.4%)
+
+**6. Número de atributos:** 58 (57 continuos, 1 etiqueta de clase nominal)
+
+**7. Información de atributos:**
+
+La última columna de 'spam.csv' indica si el correo electrónico se consideró spam o no, es decir, correo electrónico comercial no solicitado.
+
+La mayoría de los atributos indican si una palabra en particular o carácter aparecía con frecuencia en el correo electrónico.
+
+**La longitud de ejecución**
+
+Los atributos (55-57) miden la longitud de secuencias de letras mayúsculas consecutivas. Para las medidas estadísticas de cada atributo, consulte el final de este archivo.
+
+**Aquí están las definiciones de los atributos:**
+
+-   *48 atributos continuos reales [0,100] de tipo word_freq_WORD* = porcentaje de palabras en el correo electrónico que coinciden con PALABRA, es decir, 100 \* (número de veces que aparece la PALABRA en el correo electrónico) / número total de palabras en el correo electrónico. Una "palabra" en este caso es cualquier cadena de caracteres alfanuméricos limitada por caracteres no alfanuméricos o al final de la cadena.
+
+-   *6 atributos reales continuos [0,100] de tipo char_freq_CHAR* = porcentaje de caracteres en el correo electrónico que coinciden con CHAR, es decir, 100 \* (número de ocurrencias de CHAR) / caracteres totales en el correo electrónico
+
+-   *1 atributo real continuo [1,...] de tipo capital_run_length_average* = longitud promedio de secuencias ininterrumpidas de letras mayúsculas
+
+-   *1 entero continuo [1,...] atributo de tipo capital_run_length_longest* = longitud de la secuencia ininterrumpida más larga de letras mayúsculas
+
+-   *1 entero continuo [1,...] atributo de tipo capital_run_length_total* = suma de longitud de secuencias ininterrumpidas de letras mayúsculas = número total de letras mayúsculas en el correo electrónico
+
+-   *1 atributo de clase nominal {0,1} de tipo spam* = indica si el correo electrónico se consideró spam (1) o no (0), es decir, correo electrónico comercial no solicitado.
+
+**8. Valores de atributos faltantes:** ninguno
+
+**9. Distribución de clases:**
+
+-   Correo no deseado 1813 (39,4%)
+
+-   No spam 2788 (60,6%)
+
+#### 1.2.1 Importando los datos del archivo 'spam.csv'
+
+```{r}
+spam.data <- read.csv('spam.csv')
+```
+
+## 2. Exploración de los datos
+
+### **2.1 Verificando la estructura del Dataset para comprender sus variables.**
+
+```{r}
+str(spam.data)
+```
+
+### 2.2 Obteniendo los estadisticos importantes del Dataset
+
+```{r}
+summary(spam.data)
+```
+
+### 2.3. Obteniendo al dimensionalidad
+
+```{r}
+dim(spam.data)
+```
+
+### 2.4. Separando las variables por tipo (Categóricas y Numéricas).
+
+#### 2.4.1. Columnas de variables que son datos numéricos.
+
+```{r}
+spam.info <- spam.data[,-58]
+```
+
+#### 2.4.2 Columna que dice si el correo es spam o no es spam
+
+```{r}
+spam.clasif <- spam.data[,58]
+```
+
+## 3. Metodología
+
+### 3.1 Método de Agrupamiento Jerérquico
+
+El agrupamiento jerárquico consiste en una técnica para agrupar puntos de datos similares en un grupo y separar las diferentes observaciones en diferentes grupos o grupos. En Hierarchical Clustering, los clusters se crean de manera que tengan un orden predeterminado, es decir, una jerarquía.
+
+Por ejemplo, *considere la jerarquía de conceptos de una biblioteca. Una biblioteca tiene muchas secciones, cada sección tendría muchos libros, y los libros se agruparían según su tema, digamos. Esto forma una jerarquía.* (R-bloggers,2017)
+
+Esta técnica aplicada en el conjunto de datos de spam con la esperanza de aislar dos grupos claros, clasificando así los correos electrónicos en grupos de spam y no spam.
+
+El conjunto de datos fue escalado, la mayoría de las variables son frecuencias, pero hay algunos atributos que no son frecuencias.
+
+```{r}
+scale.spam <- scale(spam.info)
+distance.data  <- dist(scale.spam)
+```
+
+Luego de escalar la informacion de las variables numericas y aplicarle la función distancia distancia, que se utilizó para generar tres conglomerados diferentes, con el enlace simple, promedio y completo como método de enlace. Las gráficas de dendrograma de los grupos se muestran a continuación (orden: enlace promedio, completo y simple):
+
+```{r}
+complete.hclust <- hclust(distance.data, method = 'complete')
+single.hclust   <- hclust(distance.data, method = 'single')
+average.hclust  <- hclust(distance.data, method = 'average')
+```
+
+Graficando los agrupoamientos
+
+```{r}
+plot(complete.hclust)
+plot(single.hclust )
+plot(average.hclust)
+```
+
+Reduciendo los agrupamientos a k =2 , para obtener solo dos grupos, Los gráficos de dendrogramas de los grupos se muestran a continuación:
+
+```{r}
+comp.cut <- cutree(complete.hclust, k=2)
+sing.cut <- cutree(single.hclust, k=2 )
+aver.cut <- cutree(average.hclust, k=2)
+```
+
+```{r}
+table(comp.cut, spam.clasif)
+table(sing.cut, spam.clasif)
+table(aver.cut, spam.clasif)
+```
+
+Basandose en los dendrogramas, note que el agrupamiento jerárquico no es un análisis estadístico útil para la clasificación de correo electrónico spam/no spam, ya que claramente no hay 2 clústeres que clasificarían los correos electrónicos correctamente.
+
+Se puede notar que las observaciones parecen encadenarse entre sí en los dendrogramas, aunque el conjunto de datos se haya escalado. 4600 observaciones están en un grupo y 1 en el segundo grupo, cuando los árboles del grupo se cortan en 2 grupos.
+
+De las 4600 observaciones, solo 2788 observaciones deben agruparse en un grupo, por lo que el resultado de este análisis estadístico es una tasa de errores de clasificación del 39,38 %.
+
+```{r}
+1812/4601*100
+```
+
+### Construyendo los conjuntos de entrenamiento y de prueba
+
+```{r}
+set.seed(1234)
+n.samples <- c(1000)
+indx.sample <- sample(1:4601, n.samples)
+```
+
+Seleccionando el conjunto de entrenamiento y de prueba
+
+```{r}
+# 3601 elemtos para entrenar
+train.set <- spam.data[-indx.sample,]
+
+# 1000 elementos para probar
+test.set  <- spam.data[indx.sample,]
+```
+
+Realizando las pruebas sobre la columna de respuestas de la variable si es spam , no es spam
+
+```{r}
+# entrenando sobre la respuesta de decision si es es spam o no es spam
+train.clasif <- spam.clasif[-indx.sample]
+# prueba sobre la respuesta de decision si es es spam o no es spam
+test.clasif <- spam.clasif[indx.sample]
+```
+
+### 3.2. Árboles de Clasificación.
+
+Los árboles de decisión son útiles para entender la estructura de un conjunto de datos. Sirven para resolver problemas tanto de clasificación (predecir una variable discreta, típicamente binaria) como de regresión (predecir una variable continua). Se trata de modelos excesivamente simples pero, y ahí reside fundamentalmente su interés, fácilmente interpretables.
+
+```{r}
+library(tree)
+```
+
+Entrenando el dataset
+
+```{r}
+attach(train.set)
+trainingSet <- data.frame(train.set)
+trainingSet$spam <- factor(trainingSet$spam)
+```
+
+Creando el árbol de clasificación utilizando el conjunto de datos de entrenamiento
+
+```{r}
+t.spam <- tree(trainingSet$spam~., data = trainingSet)
+summary(t.spam) 
+plot(t.spam)
+text(t.spam)
+```
+
+### Arbol de validación cruzada.
+
+```{r}
+set.seed(1234)
+
+cvspam <- cv.tree(t.spam, FUN=prune.misclass) 
+plot(cvspam, type="b")
+
+```
+
+Luego se realizó una validación cruzada para podar el árbol y hacerlo más interpretable.
+
+### Arbol Podado
+
+Podando en tamaño = 9 porque la curva de clasificación errónea se equilibra después de eso. Note que tener un árbol más grande que ese no daría mucho beneficio para la clasificación.
+
+```{r}
+p.cvspam <- prune.misclass(t.spam, best=9) 
+plot(p.cvspam) 
+text(p.cvspam) 
+summary(p.cvspam)   
+```
+
+Esto genera un árbol de clasificación más limpio, como se muestra a continuación, con una tasa de clasificación errónea del 10 % en el conjunto de entrenamiento.
+
+Realizando las predicciones.
+
+```{r}
+treePredictions = predict(p.cvspam, newdata=test.set[,-58])
+res <- NULL
+
+for(i in 1:nrow(treePredictions)){
+  if(treePredictions[i,1] > treePredictions[i,2]){
+    res[i] <- 0
+  }else{
+    res[i] <- 1
+  }
+}
+
+table(res, test.clasif)
+```
+
+## 3.3. KNN
+
+K Nearest Neighbors se utilizó para intentar clasificar el conjunto de datos. El principio detrás de la análisis es predecir el punto utilizando las variables predictoras y luego en función de la k más cercana vecinos clasifica ese punto en la categoría que tiene el mayor porcentaje de un grupo particular en esos k vecinos.
+
+```{r}
+library(gclus)
+library(class)
+```
+
+```{r}
+knn.pred1 <- knn(train.set[,-58],test.set[,-58],train.set[,58],k=2)
+table(knn.pred1,test.set[,58])
+
+```
+
+Tomando la predicción para k=5, se encontró la mejor k a través de prueba y error de diferentes valores de k, k = 5 arrojó la tasa de clasificación errónea más pequeña. Esto se entrenó primero en el conjunto de trenes y luego se predijo usando el conjunto de valores de prueba para todas las variables en el conjunto de datos.
+
+```{r}
+knn.pred <- knn(train.set[,-58],test.set[,-58],train.set[,58],k=5)
+table(knn.pred,test.set[,58])
+(90+96)/(nrow(test.set))
+```
+
+La tasa de clasificación errónea fue del 18,6 %, lo que es lo suficientemente grande como para determinar que este método no es lo suficientemente bueno para clasificar el conjunto de datos de correo electrónico no deseado.
+
+## Conclusiones
+
+-   Después de realizar los métodos de clasificación anteriores, la tasa de clasificación errónea más baja fue atribuido a los árboles podados, con una tassa de error en la clasificacion de un 9% sobre los otros metodos utilizados.
+
+-   Se demostro que el método de agrupamientos jerarquico es uno de los metodos menos funcionales para realozar este tipo de predicciones.
+
+-   La clasificación basada en KNN obtuvo en error de clasificacion del 18,6 %, lo que es lo suficientemente grande como para determinar que este método no es lo suficientemente bueno.
+
+## Bibliografía
+
+-   UCI Machine Learning Repository: Spambase Data Set." UCI Machine Learning Repository: Spambase Data Set. Web. 06 Apr. 2016. <http://archive.ics.uci.edu/ml/datasets/Spambase>
+
+-   G. James, D. Witten, T. Hastie, An Introduction to Statistical Learning: with Applications in R, Springer Texts in Statistics, DOI 10.1007/978-1-4614-7138-7 1.
+
+-   Mark Hopkins, Erik Reeber, George Forman, Jaap Suermondt Hewlett-Packard Labs, 1501 Page Mill Rd., Palo Alto, CA 94304
+
+-   R-Bloggers, <https://www.r-bloggers.com/how-to-perform-hierarchical-clustering-using-r/>
+
+-   Carlos J. Gil Bellosta, R para profesionales de los datos: una introducción.

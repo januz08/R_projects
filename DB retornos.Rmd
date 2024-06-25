@@ -1,0 +1,55 @@
+---
+title: "Retornados"
+author: "José Fuentes"
+date: "2022-10-18"
+output: html_document
+---
+
+## Librerias
+```{r}
+library(ggplot2)
+library(tidyverse)
+```
+
+```{r}
+data <- read.csv("sv_retornos.csv", header = TRUE, sep = "," )
+```
+
+```{r}
+str(data)
+```
+
+```{r}
+head(data)
+```
+
+```{r}
+plot(data$mes,data$retornos,col=palette('Paired'))
+```
+```{r}
+#table(data$pais,data$retornos )
+```
+
+```{r}
+ggplot(data = data$retornos)
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```

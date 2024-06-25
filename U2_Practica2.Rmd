@@ -1,0 +1,225 @@
+---
+title: "Práctica de métodos de clasificacion"
+
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+
+## Conjunto de datos "Stock Market"(Smarket)
+
+Iniciamos con una exploración de los datos `Smarket`, que forman parte de la biblioteca del libro de texto `ISLR2`. El conjunto de datos consiste en rendimientos porcentuales para el índice bursátil S\&P 500
+más de $1,250$~días, desde principios de 2001 hasta finales de 2005. Para cada fecha, se han registrado los rendimientos porcentuales de cada uno de los cinco días de negociación anteriores, desde "lagone" hasta "lagfive". También incluye información del `volume` (el número de acciones negociadas el día anterior, en miles de millones), `Today` (el rendimiento porcentual en la fecha en cuestión) y `direction` (si el mercado estaba `Up` o `Down` en esta fecha). El objetivo es predecir la "dirección" ("direction" una respuesta cualitativa) usando las otras características.
+
+```{r}
+library(ISLR2)
+names(Smarket)
+dim(Smarket)
+summary(Smarket)
+pairs(Smarket)
+```
+
+La función `cor()` produce una matriz que contiene todas las correlaciones por pares entre los predictores en un conjunto de datos. La variable `directión` es cualitativa y se excluye de las evaluaciones.
+
+```{r}
+cor(Smarket[, -9])
+```
+
+Observamos que las correlaciones entre las variables `lag` y los rendimientos de `Today` son cercanas a cero. En otras palabras, parece haber poca correlación entre los rendimientos de hoy y los rendimientos de días anteriores. La única correlación sustancial es entre `Año (Year)` y `volumen (volume)`. Haciendo el gráfico de los datos, que están ordenados cronológicamente, observamos que el `volume` aumenta con el tiempo. En otras palabras, el número promedio de acciones negociadas diariamente aumentó de 2001 a 2005.
+
+```{r }
+attach(Smarket) #Adjuntamos el marco de datos
+plot(Volume)
+```
+
+
+## Regresión logistica
+
+A continuación, ajustaremos un modelo de regresión logística para predecir la "dirección (direction)" utilizando de "lagone" a "lagfive" y "volume". La función `glm()` se puede usar para ajustar muchos tipos de modelos lineales generalizados, incluida la regresión logística. La sintaxis de la función `glm()` es similar a la del linear model `lm()`, excepto que debemos pasar el argumento `family = binomial` para especificar que es una regresión logística en lugar de otro tipo de modelo lineal generalizado.
+
+```{r}
+glm.fits <- glm(
+    Direction ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Volume,
+    data = Smarket, family = binomial
+  )
+summary(glm.fits)
+```
+
+El valor de $p$ más pequeño está asociado con `lagone`. El coeficiente negativo de este predictor sugiere que si el mercado tuvo un rendimiento positivo ayer, es menos probable que suba hoy. Sin embargo, a un valor de $0.15$, el valor de $p$ sigue siendo relativamente grande, por lo que no hay pruebas claras de una asociación real entre `lagone` y `direction`.
+
+La función `coef()` permite acceder solo a los coeficientes de este modelo ajustado. También la función `summary()` permite acceder a aspectos particulares del modelo ajustado, como los valores $p$ para los coeficientes.
+
+
+```{r }
+coef(glm.fits)
+summary(glm.fits)$coef
+summary(glm.fits)$coef[, 4]
+```
+
+La función `predict()` se utiliza para predecir la probabilidad de que el mercado suba, dados los valores de los predictores. La opción `type = "response"` le dice a `R` que genere probabilidades de la forma $P(Y=1|X)$, a diferencia de otra información como el logit. Si no se proporciona ningún conjunto de datos a la función `predict()`,  se calculan las probabilidades para los datos de entrenamiento que se usaron para ajustar el modelo de regresión logística. Acontinuación se imprimen solo las primeras diez probabilidades. Estos valores corresponden a la probabilidad de que el mercado suba, en lugar de que baje, porque la función `contrasts()` indica que `R` ha creado una variable ficticia con un 1 para definir `Up`.
+
+
+```{r }
+glm.probs <- predict(glm.fits, type = "response")
+glm.probs[1:10]
+contrasts(Direction)
+```
+Para hacer una predicción sobre si el mercado subirá o bajará en un día en particular, debemos convertir estas probabilidades pronosticadas en etiquetas de clase, `Up` o `Down`.
+Los dos comandos siguientes crean un vector de predicciones de clase en función de si la probabilidad prevista de un aumento del mercado es mayor o menor que $0.5$.
+
+
+```{r}
+glm.pred <- rep("Down", 1250)
+glm.pred[glm.probs > .5] = "Up"
+```
+
+El primer comando crea un vector de 1-250 elementos `Down`. La segunda línea transforma en `Up` todos los elementos para los que la probabilidad prevista de un aumento del mercado supera el $0.5$. Dadas estas predicciones, la función `table()` produce una matriz de confusión para determinar cuántas observaciones se clasificaron correcta o incorrectamente. Al ingresar dos vectores cualitativos, R creará una tabla de dos por dos con recuentos del número de veces que ocurrió cada combinación, por ejemplo, pronosticó *Up* y el mercado aumentó, predijo *Up* y el mercado disminuyó, etc.
+
+```{r }
+table(glm.pred, Direction)
+(507 + 145) / 1250
+mean(glm.pred == Direction)
+```
+
+Los elementos diagonales de la matriz de confusión indican predicciones correctas, mientras que los fuera de la diagonal representan predicciones incorrectas. Por lo tanto, nuestro modelo predijo correctamente que el mercado subiría en $507$~días y que bajaría en $145$~días, para un total de $507+145 = 652$ predicciones correctas. La función `mean()` se puede utilizar para calcular la fracción de días en los que la predicción fue correcta. En este caso, la regresión logística predijo correctamente el movimiento del mercado $52.2$\,\% del tiempo.
+
+
+A simple vista, el modelo de regresión logística parece estar funcionando mejor que tan solo adivinando.
+Sin embargo, este resultado es engañoso porque entrenamos y evaluamos el modelo en el mismo conjunto de observaciones de $1,250$. En otras palabras, $100\%-52.2\%=47.8\%$, es la tasa de error de *entrenamiento*. La tasa de error de entrenamiento suele ser demasiado optimista: tiende a subestimar la tasa de error de prueba o evaluación. Para evaluar mejor la precisión del modelo de regresión logística en este caso, podemos ajustar el modelo usando parte de los datos y luego examinar qué tan bien predice los datos *retenidos*.
+Esto producirá una tasa de error más realista, en el sentido de que en la práctica estaremos interesados en el rendimiento de nuestro modelo, no en los datos que usamos para ajustar el modelo, sino en los días futuros para los que se desconocen los movimientos del mercado.
+
+Para implementar esta estrategia, primero crearemos un vector correspondiente a las observaciones de 2001 a 2004. Luego usaremos este vector para crear un conjunto de datos retenidos de observaciones de 2005.
+
+
+```{r }
+train <- (Year < 2005)
+Smarket.2005 <- Smarket[!train, ]
+dim(Smarket.2005)
+Direction.2005 <- Direction[!train]
+```
+
+El objeto `train` es un vector de $1{,}250$ elementos, correspondientes a las observaciones en nuestro conjunto de datos. Los elementos del vector que corresponden a observaciones que ocurrieron antes de 2005 se establecen en "VERDADERO (TRUE)", mientras que los que corresponden a observaciones en 2005 se establecen en "FALSO (FALSE)".
+El objeto `train` es un vector *booleano*, ya que sus elementos son `VERDADERO (TRUE)` y `FALSO (FALSE)`.
+Los vectores booleanos se pueden utilizar para obtener un subconjunto de filas o columnas de una matriz. Por ejemplo, el comando `Smarket[train, ]` seleccionaría una submatriz del conjunto de datos del mercado de valores, correspondiente solo a las fechas anteriores a 2005, ya que esos son aquellos para los que los elementos de `train` son `VERDADEROS`.
+El símbolo `!` se puede utilizar para invertir todos los elementos de un vector booleano. Es decir, `!train` es un vector similar a `train`, excepto que los elementos que son `VERDADERO (TRUE)` en `train` se cambian a `FALSO (FALSE)` en `!train`, y los elementos que son `FALSO (FALSE)` en `train` se cambia a `VERDADERO (TRUE)` en `!train`. Por lo tanto, `Smarket[!train, ]` produce una submatriz de los datos del mercado de valores que contiene solo las observaciones para las cuales `train` es `FALSO (FALSE)`---es decir, las observaciones con fechas en 2005. El resultado anterior indica que hay 252 de dichas observaciones.
+
+Ahora ajustamos un modelo de regresión logística usando solo el subconjunto de las observaciones que corresponden a fechas anteriores a 2005, usando el argumento `subset (subconjunto)`. Luego obtenemos las probabilidades pronosticadas de que el mercado de valores suba para cada uno de los días de nuestro conjunto de prueba (evalución) , es decir, para los días de 2005.
+
+
+```{r }
+glm.fits <- glm(
+    Direction ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Volume,
+    data = Smarket, family = binomial, subset = train
+  )
+glm.probs <- predict(glm.fits, Smarket.2005,
+    type = "response")
+```
+
+Tenga en cuenta que hemos entrenado y probado nuestro modelo en dos conjuntos de datos completamente separados: el entrenamiento se realizó usando solo las fechas anteriores a 2005 y la prueba se realizó usando solo las fechas de 2005.
+Finalmente, calculamos las predicciones para 2005 y las comparamos con los movimientos reales del mercado durante ese período de tiempo.
+
+```{r}
+glm.pred <- rep("Down", 252)
+glm.pred[glm.probs > .5] <- "Up"
+table(glm.pred, Direction.2005)
+mean(glm.pred == Direction.2005)
+mean(glm.pred != Direction.2005)
+```
+
+La notación `!=` significa que *no es igual a*, por lo que el último comando calcula la tasa de error del conjunto de prueba. Los resultados son bastante decepcionantes: la tasa de error de la prueba es de $52 %$, lo cual es peor que adivinar al azar. Por supuesto, este resultado no es tan sorprendente, dado que, en general, no se esperaría poder utilizar los rendimientos de días anteriores para predecir el rendimiento futuro del mercado.
+
+Recordamos que el modelo de regresión logística tenía valores $p$ muy decepcionantes asociados con todos los predictores, y que el valor $p$ más pequeño, aunque no muy pequeño, correspondía a `lagone`. Quizá eliminando las variables que parecen no ser útiles para predecir la "dirección", podemos obtener un modelo más efectivo. Después de todo, el uso de predictores que no tienen relación con la respuesta tiende a causar un deterioro en la tasa de error de la prueba (dado que dichos predictores provocan un aumento en la varianza sin una disminución correspondiente en el sesgo), y por lo tanto, eliminar dichos predictores puede, a su vez, producir una mejora. .
+  A continuación, reajustamos la regresión logística usando solo `lagone` y `lagtwo`, que parecían tener el poder predictivo más alto en el modelo de regresión logística original.
+
+```{r}
+glm.fits <- glm(Direction ~ Lag1 + Lag2, data = Smarket,
+    family = binomial, subset = train)
+glm.probs <- predict(glm.fits, Smarket.2005,
+    type = "response")
+glm.pred <- rep("Down", 252)
+glm.pred[glm.probs > .5] <- "Up"
+table(glm.pred, Direction.2005)
+mean(glm.pred == Direction.2005)
+106 / (106 + 76)
+```
+Ahora los resultados parecen ser un poco mejores: $56\%$ de los movimientos diarios se han pronosticado correctamente. Vale la pena señalar que en este caso, una estrategia mucho más simple de predecir que el mercado aumentará todos los días también será correcta el $56\%$ del tiempo. Por lo tanto, en términos de tasa de error general, el método de regresión logística no es mejor que el enfoque ingenuo. Sin embargo, la matriz de confusión muestra que en los días en que la regresión logística predice un aumento en el mercado, tiene una tasa de precisión de $58\%$. Esto sugiere una posible estrategia comercial de comprar en los días en que el modelo predice un mercado en aumento y evitar las transacciones en los días en que se pronostica una disminución. Por supuesto, habría que investigar más detenidamente si esta pequeña mejora era real o simplemente se debía a una casualidad.
+
+
+## Naive Bayes o clasificador probabilístico
+
+A continuación, ajustamos un modelo de bayesiano ingenuo a los datos de `Smarket`. Naive Bayes se implementa en `R` mediante la función `naiveBayes()`, que forma parte de la biblioteca `e1071`.
+Esta implementación del clasificador bayesiano ingenuo modela cada característica cuantitativa mediante una distribución gaussiana. 
+
+```{r}
+library(e1071)
+nb.fit <- naiveBayes(Direction ~ Lag1 + Lag2, data = Smarket,
+    subset = train)
+nb.fit
+```
+
+La salida contiene la media estimada y la desviación estándar para cada variable en cada clase. Por ejemplo, la media de `lagone` es $0.0428$ para
+
+   `Directión=Down`, y la desviación estándar es $1.23$. Podemos verificar esto de la siguiente manera:
+
+```{r chunk23}
+mean(Lag1[train][Direction[train] == "Down"])
+sd(Lag1[train][Direction[train] == "Down"])
+```
+
+La función `predict()` es igualmente sencilla.
+
+```{r }
+nb.class <- predict(nb.fit, Smarket.2005)
+table(nb.class, Direction.2005)
+mean(nb.class == Direction.2005)
+```
+
+Naive Bayes funciona muy bien con estos datos, con predicciones precisas de más de $59\%$ del tiempo.
+
+La función `predict()` también puede generar estimaciones de la probabilidad de que cada observación pertenezca a una clase en particular.
+
+```{r}
+nb.preds <- predict(nb.fit, Smarket.2005, type = "raw")
+nb.preds[1:5, ]
+```
+
+
+## K-Nearest Neighbors o K-vecinos más cercanos
+
+Ahora realizaremos KNN usando la función `knn()`, que es parte de la biblioteca `class`. Esta función funciona de manera bastante diferente a las otras funciones de ajuste de modelos que hemos utilizado hasta ahora.
+En lugar de un enfoque de dos pasos en el que primero ajustamos el modelo y luego usamos el modelo para hacer predicciones, `knn()` forma predicciones usando un solo comando. La función requiere cuatro argumentos:
+
+* Una matriz que contiene los predictores asociados con los datos de entrenamiento, denominada `train.X`.
+* Una matriz que contiene los predictores asociados con los datos para los que deseamos hacer predicciones, denominada `test.X`.
+* Un vector que contiene las etiquetas de clase para las observaciones de entrenamiento, etiquetadas como `train.Direction`.
+* Un valor para $K$, el número de vecinos más cercanos que utilizará el clasificador.
+
+Usamos la función `cbind()`, abreviatura de *column bind*, para unir las variables `lagone` y `lagtwo` en dos matrices, una para el conjunto de entrenamiento y la otra para el conjunto de prueba o evaluación.
+
+
+```{r}
+library(class)
+train.X <- cbind(Lag1, Lag2)[train, ]
+test.X <- cbind(Lag1, Lag2)[!train, ]
+train.Direction <- Direction[train]
+```
+
+Ahora la función `knn()` se puede usar para predecir el movimiento del mercado para las fechas de 2005. Establecemos una semilla aleatoria antes de aplicar `knn()` porque si varias observaciones están vinculadas como vecinos más cercanos, entonces `R` rompe el empate al azar. Por lo tanto, se debe establecer una semilla para garantizar la reproducibilidad de los resultados.
+
+
+```{r}
+set.seed(1)
+knn.pred <- knn(train.X, test.X, train.Direction, k = 1)
+table(knn.pred, Direction.2005)
+(83 + 43) / 252
+```
+Los resultados usando $K=1$ no son muy buenos, ya que solo se predice correctamente el $50 %$mde las observaciones. Puede ser que $K=1$ resulte en un ajuste demasiado flexible a los datos. A continuación, repetimos el análisis usando $K=3$.
+
+```{r}
+knn.pred <- knn(train.X, test.X, train.Direction, k = 3)
+table(knn.pred, Direction.2005)
+mean(knn.pred == Direction.2005)
+```
+
+Los resultados mejoran ligeramente. Pero continuar aumentando $K$ no proporciona mejoras.
+

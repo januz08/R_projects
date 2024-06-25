@@ -1,0 +1,127 @@
+---
+title: "Práctica 1"
+author: "Nombre"
+date: '2022-09-26'
+output:
+  pdf_document: default
+  html_document: default
+---
+
+## Esta es una práctica usando R Markdown
+
+Este es un documento R Markdown. Markdown es un formato de sintáxis sencillo para crear documents HTML, PDF y MS Word. Para mayores detalles del uso de R Markdown ver <http://rmarkdown.rstudio.com>.
+
+### 1. Cambiando el campo de author y el nombre del archivo.
+
+##### (a) Cambiando el campo `author:` podemos introducir nuestro nombre.
+
+##### (b) Podemos guardar el archivo (en el icono de Guardar o en el menú): "lab01_Nombre.Rmd".
+
+### 2.  ¡Hola Mundo!
+
+Aquí hay un fragmento de código de R que imprime el texto '¡Hola mundo!'.
+
+```{r}
+print("Hola mundo")
+sum<-7+5
+sum
+```
+
+
+```{r}
+print("¡Hola mundo!")
+```
+
+
+#### (a) Modificar el fragmento de código para incluir su nombre
+```{r}
+# Editar
+
+```
+
+
+### 3.  Creando secuencias
+Para crear una variable vector utilizamos el operador `c()`, el cual forma un vector con sus argumentos.  Podemos crear secuencias con operaciones el operador `:` y la función de secuencia `seq()`.
+
+##### Operador `:` : 
+```{r}
+1:10 # Numeros 1 al 10
+127:132 # Numeros 127 al 132
+```
+
+##### Función `seq` : `seq(desde, hasta, incrementos)`
+```{r}
+seq(1,10,1) # Números de 1 al 10
+seq(1,10,2) # Números impares 1 al 10
+seq(2,10,2) # Números pares del 2 al 10
+```
+
+Para aprender más de una función escribimos `?nombrefuncion` en la consola.  Por Ej., `?seq`.
+
+#### (a) Usar `:` para producir una secuencia del 3 al 12
+```{r}
+  # Editar
+
+```
+
+#### (b) Usar `seq()` para producir una secuencia del 3 al 30 con incrementos de 3
+```{r}
+# Editar
+```
+
+#### (c) Guardar la secuencia (a) como una variable `x`, y la secuencia (b) como una variable `y`.  Imprimir el resultado de su producto `x*y`
+```{r}
+# Editar
+x<-3:12
+x
+y<-seq(3,30,3)
+y
+x*y
+```
+
+
+### 4. Conjunto de datos Cars 
+
+A continuación, un ejemplo simple con un conjunto de datos disponible en R llamado `cars`.
+
+Para ver las primeras columnas del conjunto de datos escribimos `head(cars)`.
+
+```{r}
+head(cars)
+```
+Para este ejemplo utilizaremos el comando `attach()` para tener acceso a las columnas `speed` and `dist` de `cars` como si fueran vectores en nuestro espacio de trabajo.
+
+```{r}
+attach(cars) # En futuras practicas aprenderemos como cargar todas las columnas
+speed
+dist
+
+```
+
+#### (a) Calcular la media y las desviación estandar de las variables speed and dist.
+```{r}
+# Editar
+mean(speed)
+sd(dist)
+```
+
+ Para producir un histograma de la distancia de frenado utilizamos la función `hist`.
+```{r}
+hist(dist) # Histograma de la distancia de frenado
+hist(dist,10) # Histograma de la distancia con 10 bins
+```
+
+La función `plot(x,y,...)` puede usarse para producir una gráfica del vector `y` contra el vector `x`.  Al escribir `?plot` en la consola podemos ver mas detalles de la función. 
+
+#### (b) Usar la función `plot(x,y)` para crear una gráfica de dispersión de dist contra speed.
+```{r}
+plot(speed,dist)
+```
+
+LA función `summary()` produce un sumario con estadisticas descriptivas de las variables en el conjunto de datos cars. 
+
+```{r cars}
+summary(cars)
+```
+
+

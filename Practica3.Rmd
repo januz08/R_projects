@@ -1,0 +1,114 @@
+---
+title: "Practica3"
+author: "Autor"
+date: "`r Sys.Date()`"
+output: html_document
+---
+## Árboles de decisiones
+
+#### Ilustraremos esta práctica con datos del conjunto Iris.
+
+```{r}
+# Cargando los datos. Editar la ubicación del archivo de datos en su computadora
+#mydata<-read.table("/home/rosa/Documents/MDD2022/data/iris.data", header = T, sep = ",")
+mydata<-read.table("iris.data", header = T, sep = ",")
+```
+
+Creación de un árbol usando todos los datos Iris.
+
+```{r}
+library(tree)
+mydata.tree<-tree(Especie ~.,mydata)
+
+mydata.tree
+```
+
+Resúmen del árbol creado con todos los datos del conjunto Iris
+
+
+```{r}
+summary(mydata.tree)
+```
+La función sencilla `plot` puede crear el diagram del árbol
+
+```{r}
+# Ejecutar las dos lineas siguientes para crear el diagrama completo
+plot(mydata.tree)
+text(mydata.tree, pretty = 1)
+```
+#### Contruyendo árboles de decisión en fases de entrenamiento y evaluación
+
+Incluimos funciones de los paquetes `caret` y `rpart.plot`.
+
+```{r}
+library(caret)
+#install.packages("rpart.plot")
+library(rpart.plot)
+
+```
+
+Estructura de los datos
+
+```{r}
+str(mydata)
+```
+
+Dado que estamos usando un clasificador basado en árboles, no hay necesidad de escalar el conjunto de datos.
+
+En este ejemplo, dividimos el conjunto de datos en conjuntos de entrenamiento y prueba, con el 70 % de los datos en entrenamiento y el 30 % en prueba
+
+```{r}
+set.seed(3033) # escogemos una semilla
+intrain <- createDataPartition(y = mydata$Especie, p= 0.7, list = FALSE)
+training <- mydata[intrain,]
+testing <- mydata[-intrain,]
+dim(training)
+dim(testing)
+```
+
+#### *Clasificación por ganancia de información (entropía)*
+```{r}
+#Fase de entrenamiento
+trctrl <- trainControl(method = "repeatedcv", number = 10, repeats = 3)
+set.seed(3333)
+dtree_fit_info <- train(Especie ~., data = training, method = "rpart",
+                    parms = list(split = "information"),
+                    trControl=trctrl,
+                    tuneLength = 10)
+
+
+prp(dtree_fit_info$finalModel, box.palette="Reds", tweak=1.2)
+
+```
+Ahora usamos el árbol aprendido para predecir en el conjunto de datos de evaluación o prueba (testing). Verificamos el desempeño con la matriz de confusión.
+
+```{r}
+#Fase de evaluación
+test_pred_info<-predict(dtree_fit_info,newdata = testing)
+confusionMatrix(test_pred_info,testing$Especie)
+```
+
+El modelo de ganancia de información funcionó bien con una precisión de 0.93
+
+A continuación realizamos el mismo procedimiento de aprender el model y evaluarlo utilizando el índice de Gini.
+
+#### *Clasificación usando el índice de Gini*
+
+```{r}
+# Fase de entrenamiento
+set.seed(3333)
+dtree_fit_gini <- train(Especie ~., data = training, method = "rpart",
+                         parms = list(split = "gini"),
+                         trControl=trctrl,
+                         tuneLength = 10)
+prp(dtree_fit_gini$finalModel,box.palette = "Blues", tweak = 1.2)
+
+```
+
+```{r}
+# Fase de evaluación
+test_pred_gini<-predict(dtree_fit_gini,newdata = testing)
+confusionMatrix(test_pred_gini,testing$Especie)
+```
+
+El modelo usando el índice de Gini funcionó bien con una precisión de 0.93
